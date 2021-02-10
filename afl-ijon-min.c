@@ -178,7 +178,7 @@ int ijon_store_max_input(ijon_min_state* self, int i, uint8_t* data, size_t len,
 	int ret=0;
 	
 	char* filename = NULL;
-	assert(asprintf(&filename, "%s/finding_%lu_%lu_v_%lu_par_%u", self->max_dir, self->num_updates, time(0), self->max_map[i],parent_id) > 0);
+	assert(asprintf(&filename, "%s/finding_%lu_%lu_v_%ld_par_%u", self->max_dir, self->num_updates, time(0), self->max_map[i],parent_id) > 0);
 	self->num_updates+=1;
     int fd1 = open(filename, O_CREAT|O_TRUNC|O_WRONLY,0600);
     assert(write(fd1,data,len) == len);

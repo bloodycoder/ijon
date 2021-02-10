@@ -287,6 +287,8 @@ static s8  interesting_8[]  = { INTERESTING_8 };
 static s16 interesting_16[] = { INTERESTING_8, INTERESTING_16 };
 static s32 interesting_32[] = { INTERESTING_8, INTERESTING_16, INTERESTING_32 };
 
+static int ijon_rule_length;
+
 /* Fuzzing stages */
 
 enum {
@@ -3264,10 +3266,22 @@ static int is_field()
 
 static void print_rules(){
 	int i=0;
+  int tmp_len = 0;
 	for(ijon_rule* p=ijon_rules;p;p=p->next){
+    tmp_len++;
 		OKF("[%d] 0x%x %02x",i++,p->s_offset,p->s_chunk[0]);
     }
 	OKF("is_field:%d",is_field());
+  ijon_rule_length = tmp_len;
+}
+
+static int get_random_offset(int temp_len){
+  int move = UR(ijon_rule_length);
+  ijon_rule* p=ijon_rules;
+  for(int i=0;i<move && p->next;i++){
+    p = p->next;
+  }
+  return p->s_offset%temp_len;
 }
 
 /* Check if the result of an execve() during routine fuzzing is interesting,
@@ -3449,7 +3463,7 @@ keep_as_crash:
 
       unique_crashes++;
       /* add by yangke start */
-      if(unique_crashes==1||get_cur_time() - start_time>3600000){//
+      if(unique_crashes==1000||get_cur_time() - start_time>600000){//
 		  OKF("First Crash is Achieved! Exit now!");
 
 		  fd = open(fn, O_WRONLY | O_CREAT | O_EXCL, 0600);
@@ -6506,8 +6520,14 @@ havoc_stage:
           /* Just set a random byte to a random value. Because,
              why not. We use XOR with 1-255 to eliminate the
              possibility of a no-op. */
-
-          out_buf[UR(temp_len)] ^= 1 + UR(255);
+          //if(ijon_rule_length>0 && UR(10)>3){
+          if(ijon_rule_length>0){
+            // use saved offset other than random.
+            out_buf[get_random_offset(temp_len)] ^= 1+UR(255);
+          }
+          else{
+            out_buf[UR(temp_len)] ^= 1 + UR(255);
+          }
           break;
 
         case 11 ... 12: {
@@ -8025,6 +8045,7 @@ int main(int argc, char** argv) {
   u8  *extras_dir = 0;
   u8  mem_limit_given = 0;
   u8  exit_1 = !!getenv("AFL_BENCH_JUST_ONE");
+  ijon_rule_length = 0;
   char** use_argv;
 
   struct timeval tv;
